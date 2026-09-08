@@ -37,10 +37,10 @@ class GradCAM:
         self.target_layer.register_full_backward_hook(self._save_gradients)
 
     def _save_activations(self, module, input, output):
-        self.activations = output.detach()
+        self.activations = output
 
     def _save_gradients(self, module, grad_input, grad_output):
-        self.gradients = grad_output[0].detach()
+        self.gradients = grad_output[0]
 
     def generate_heatmap(
         self, input_tensor: torch.Tensor, target_class: Optional[int] = None
@@ -55,14 +55,19 @@ class GradCAM:
         Returns:
             (heatmap, target_class)
         """
-        self.model.zero_grad()
-        logits = self.model(input_tensor)
+        self.gradients = None
+        self.activations = None
 
-        if target_class is None:
-            target_class = int(logits.argmax(dim=1).item())
+        with torch.enable_grad():
+            inp = input_tensor.clone().detach().requires_grad_(True)
+            self.model.zero_grad()
+            logits = self.model(inp)
 
-        score = logits[0, target_class]
-        score.backward(retain_graph=True)
+            if target_class is None:
+                target_class = int(logits.argmax(dim=1).item())
+
+            score = logits[0, target_class]
+            score.backward(retain_graph=True)
 
         if self.gradients is None or self.activations is None:
             # Fallback if hooks didn't trigger
@@ -70,8 +75,8 @@ class GradCAM:
             return np.zeros((h, w), dtype=np.float32), target_class
 
         # Global average pooling of gradients
-        weights = torch.mean(self.gradients, dim=(2, 3), keepdim=True)
-        cam = torch.sum(weights * self.activations, dim=1, keepdim=True)
+        weights = torch.mean(self.gradients.detach(), dim=(2, 3), keepdim=True)
+        cam = torch.sum(weights * self.activations.detach(), dim=1, keepdim=True)
         cam = F.relu(cam)  # Apply ReLU to keep positive contributions
 
         # Resize to match input spatial dimensions

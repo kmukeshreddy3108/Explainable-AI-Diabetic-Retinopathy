@@ -42,7 +42,7 @@ def export_to_onnx(
             dummy_input,
             output_path,
             export_params=True,
-            opset_version=opset,
+            opset_version=opset if opset <= 14 else 14,
             do_constant_folding=True,
             input_names=["input"],
             output_names=["logits"],
@@ -51,10 +51,18 @@ def export_to_onnx(
                 "logits": {0: "batch_size"},
             },
         )
-    except (ImportError, ModuleNotFoundError, Exception) as err:
-        # Fallback: create empty/placeholder onnx artifact for testing when onnxscript is missing
-        with open(output_path, "wb") as f:
-            f.write(b"ONNX_DUMMY_ARTIFACT_FOR_TESTING")
+    except Exception as err:
+        # Try legacy/minimal export options if primary export fails
+        torch.onnx.export(
+            model,
+            dummy_input,
+            output_path,
+            export_params=True,
+            opset_version=11,
+            do_constant_folding=True,
+            input_names=["input"],
+            output_names=["logits"],
+        )
 
     return os.path.abspath(output_path)
 

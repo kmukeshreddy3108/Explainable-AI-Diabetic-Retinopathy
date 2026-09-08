@@ -24,7 +24,7 @@ from src.iqa.field_of_view import extract_fov_mask
 from src.segmentation.optic_disc import detect_optic_disc, estimate_fovea_location
 from src.segmentation.vessels import segment_vessels
 from src.segmentation.lesions import detect_all_lesions
-from src.grading.model import build_dr_model
+from src.grading.model import build_dr_model, load_dr_model, preprocess_fundus_image
 from src.grading.hybrid import fuse_hybrid_grading
 from src.explainability.gradcam import GradCAM, overlay_heatmap
 from src.explainability.fusion import create_composite_explanation_panel
@@ -45,12 +45,17 @@ st.caption("SIH 2026 · PS 26038 · MathWorks Track | Multi-Stage Explainable AI
 
 # Initialize Session & Model
 @st.cache_resource
-def load_grading_model():
-    return build_dr_model(pretrained=True)
+def get_grading_model():
+    return load_dr_model(checkpoint_path="models/dr_grading_efficientnet.pt")
 
-model = load_grading_model()
+model, is_ckpt_loaded = get_grading_model()
 outbox = OutboxQueue()
 sync_worker = SyncWorker(outbox=outbox)
+
+if is_ckpt_loaded:
+    st.sidebar.success("✅ Model Checkpoint: Loaded (`models/dr_grading_efficientnet.pt`)")
+else:
+    st.sidebar.info("ℹ️ Model Checkpoint: Base EfficientNet-B0 (No fine-tuned `.pt` file found in `models/`)")
 
 # ── Sidebar Controls ────────────────────────────────────────────────────────
 st.sidebar.header("📥 Input Image Selection")
@@ -148,16 +153,15 @@ with st.spinner("Processing pipeline... Extracting features, running Neural Netw
         processing_img, fov_mask, (cx, cy), r_od, od_mask, fovea_xy, fovea_mask, vessel_mask, vessel_density
     )
 
-    # Neural Network Forward Pass
-    inp_tensor = torch.from_numpy(processing_img).permute(2, 0, 1).unsqueeze(0).float() / 255.0
-    inp_tensor = torch.nn.functional.interpolate(inp_tensor, size=(224, 224), mode="bilinear")
+    # Neural Network Forward Pass with standardized ImageNet normalization
+    inp_tensor = preprocess_fundus_image(processing_img)
     with torch.no_grad():
         nn_probs = model.predict_probs(inp_tensor).squeeze(0).numpy()
 
     # Hybrid Clinical Fusion
     grading_result = fuse_hybrid_grading(nn_probs, evidence)
 
-    # Grad-CAM
+    # Grad-CAM Visual Attention Heatmap (Generated from predicted target class)
     cam_engine = GradCAM(model)
     heatmap, _ = cam_engine.generate_heatmap(inp_tensor, target_class=grading_result.predicted_grade)
 

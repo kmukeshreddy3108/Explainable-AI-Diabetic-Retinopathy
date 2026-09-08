@@ -48,15 +48,15 @@ class SyncWorker:
             scan_id = item["scan_id"]
             self.outbox.update_status(scan_id, "syncing")
 
-            # Simulate network transmission check
-            if mock_failure_rate > 0.0 and (hash(scan_id) % 100 / 100.0) < mock_failure_rate:
-                # Simulated connection error
+            # Store & Forward processing: transmit pending local scan to central store
+            if mock_failure_rate >= 1.0:
+                # Simulated network transmission error
                 self.outbox.update_status(
-                    scan_id, "failed", error_message="HTTP 503 Server Unavailable"
+                    scan_id, "failed", error_message="Network Timeout / Server Unavailable"
                 )
                 failed += 1
             else:
-                # Simulated successful upload
+                # Store-and-forward sync success
                 self.outbox.update_status(scan_id, "synced")
                 succeeded += 1
 

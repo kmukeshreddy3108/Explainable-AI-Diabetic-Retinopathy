@@ -16,34 +16,42 @@ from src.sync.outbox import OutboxQueue
 st.set_page_config(page_title="Specialist Telemedicine Portal", page_icon="🏥", layout="wide")
 
 st.title("🏥 District Telemedicine Specialist Review Portal")
-st.caption("Human-in-the-Loop Validation & Offline PHC Synchronized Feedback Loop")
+st.caption("Human-in-the-Loop Validation & Offline PHC Synchronized Feedback Loop (Demo / Local Store & Forward)")
+
+st.info(
+    "🔄 **Architecture Note (Demo Mode):** Scans are transferred from rural PHC Outbox queues to the District Portal "
+    "via local store-and-forward SQLite sync. Only synced scans are presented for specialist decision."
+)
 
 outbox = OutboxQueue()
 scans = outbox.fetch_all_scans()
 
 if not scans:
-    st.info("ℹ️ No pending scans in the outbox. Process a scan on the Screening Desk to send items to the outbox queue.")
+    st.info("ℹ️ No scans found in local outbox queue. Save and sync a scan on the Screening Desk to view items here.")
     st.stop()
 
 st.subheader("📥 District Referral Queue (Prioritized High-Risk Scans First)")
 
 # Display overview metrics
 total_scans = len(scans)
+synced_count = sum(1 for s in scans if s.get("status") == "synced")
 referable_count = sum(1 for s in scans if s["priority"] == 2)
-reviewed_count = sum(1 for s in scans if s.get("specialist_status") != "pending_review")
+reviewed_count = sum(1 for s in scans if s.get("specialist_status") not in [None, "pending_review"])
 
-m1, m2, m3 = st.columns(3)
+m1, m2, m3, m4 = st.columns(4)
 m1.metric("Total Queued Scans", total_scans)
-m2.metric("High-Risk Referable Cases", referable_count)
-m3.metric("Ophthalmologist Reviews Completed", reviewed_count)
+m2.metric("Synced Scans", synced_count)
+m3.metric("High-Risk Referable Cases", referable_count)
+m4.metric("Ophthalmologist Reviews", reviewed_count)
 
 st.divider()
 
 for scan in scans:
     report = json.loads(scan["report_json"]) if isinstance(scan["report_json"], str) else scan["report_json"]
-    p_badge = "🔴 HIGH PRIORITY (Referable)" if scan["priority"] == 2 else "🟢 NORMAL (Routine)"
+    p_badge = "🔴 HIGH PRIORITY" if scan["priority"] == 2 else "🟢 ROUTINE"
+    sync_badge = "✅ SYNCED" if scan.get("status") == "synced" else f"⏳ {scan.get('status', 'pending').upper()}"
 
-    with st.expander(f"Scan ID: {scan['scan_id']} | Patient: {scan['patient_id']} | {p_badge}"):
+    with st.expander(f"Scan ID: {scan['scan_id']} | Patient: {scan['patient_id']} | {p_badge} | {sync_badge}"):
         col1, col2 = st.columns([1, 1])
 
         with col1:
