@@ -104,7 +104,7 @@ class DistrictScreeningSim:
             while env.now < total_working_min:
                 env.process(patient_flow(env, p_id))
                 p_id += 1
-                yield env.timeout(random.exponential(patient_interarrival_min))
+                yield env.timeout(np.random.exponential(patient_interarrival_min))
 
         env.process(patient_generator(env))
         env.run(until=total_working_min)
