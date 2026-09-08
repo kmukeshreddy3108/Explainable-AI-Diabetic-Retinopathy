@@ -103,9 +103,11 @@ def detect_red_lesions(
 
     for i in range(1, num_labels):
         area = stats[i, cv2.CC_STAT_AREA]
-        perimeter = cv2.arcLength(
-            np.argwhere(labels == i)[:, ::-1].astype(np.int32), True
-        )
+
+        # Fast perimeter calculation using findContours on the component mask
+        component_mask = (labels == i).astype(np.uint8)
+        contours, _ = cv2.findContours(component_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        perimeter = cv2.arcLength(contours[0], True) if contours else 0.0
         circularity = (4 * np.pi * area) / (perimeter ** 2) if perimeter > 0 else 0.0
 
         # Microaneurysms: small & circular

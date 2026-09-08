@@ -48,11 +48,14 @@ for scan in scans:
 
         with col1:
             st.markdown("#### 📑 AI Screening Diagnosis & Report")
-            st.write(f"- **ICDR Diagnosis:** Grade {report['grading']['predicted_grade']} — {report['grading']['grade_label']}")
-            st.write(f"- **Confidence:** {report['grading']['confidence']*100:.1f}%")
-            st.write(f"- **IQA Quality Status:** {report['iqa']['grade']}")
-            st.write(f"- **Detected Lesion Counts:**", report['lesions']['counts'])
-            st.info(f"**AI Recommendation:** {report['clinical_recommendation']}")
+            grading = report.get('grading_assessment', report.get('grading', {}))
+            iqa = report.get('quality_assessment', report.get('iqa', {}))
+            lesions = report.get('lesion_breakdown', report.get('lesions', {}))
+            st.write(f"- **ICDR Diagnosis:** Grade {grading.get('predicted_grade', 'N/A')} — {grading.get('grade_label', 'N/A')}")
+            st.write(f"- **Confidence:** {grading.get('confidence', 0)*100:.1f}%")
+            st.write(f"- **IQA Quality Status:** {iqa.get('grade', 'N/A')}")
+            st.write(f"- **Detected Lesion Counts:**", lesions.get('lesion_counts', lesions.get('counts', lesions)))
+            st.info(f"**AI Recommendation:** {report.get('clinical_recommendation', 'Awaiting AI analysis')}")
 
         with col2:
             st.markdown("#### 👨‍⚕️ Ophthalmologist Telemedicine Response")

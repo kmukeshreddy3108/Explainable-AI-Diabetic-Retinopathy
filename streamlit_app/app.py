@@ -79,6 +79,11 @@ else:
     if uploaded_file is not None:
         file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
         bgr = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+        # Cap resolution at 1024px max dimension for processing speed
+        max_dim = max(bgr.shape[:2])
+        if max_dim > 1024:
+            scale = 1024 / max_dim
+            bgr = cv2.resize(bgr, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
         img_rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
         patient_id = "PATIENT_UPLOAD"
         scan_id = f"SCAN_{uploaded_file.name}"
@@ -87,7 +92,7 @@ else:
         st.stop()
 
 # Display Original Image in Sidebar
-st.sidebar.image(img_rgb, caption=f"Scan ID: {scan_id}", use_container_width=True)
+st.sidebar.image(img_rgb, caption=f"Scan ID: {scan_id}", width="stretch")
 
 # ── Step 1: Module 1 — IQA Quality Assessment ──────────────────────────────
 st.header("1. Image Quality Assessment (IQA Gate)")
@@ -120,9 +125,9 @@ if iqa_result.grade == "ENHANCED_PASS":
     st.warning("⚠️ **Borderline Quality Detected.** Image enhanced using Ben Graham color normalization.")
     e_col1, e_col2 = st.columns(2)
     with e_col1:
-        st.image(img_rgb, caption="Original Input", use_container_width=True)
+        st.image(img_rgb, caption="Original Input", width="stretch")
     with e_col2:
-        st.image(iqa_result.enhanced_image, caption="Enhanced (Ben Graham)", use_container_width=True)
+        st.image(iqa_result.enhanced_image, caption="Enhanced (Ben Graham)", width="stretch")
     processing_img = iqa_result.enhanced_image
 else:
     processing_img = img_rgb
@@ -201,7 +206,7 @@ st.divider()
 st.header("3. Explainable AI Visual Evidence & Report")
 
 composite_panel = create_composite_explanation_panel(processing_img, heatmap, evidence)
-st.image(composite_panel, caption="Composite Evidence Panel (Clockwise: Original, Grad-CAM Attention, Fused Map, Lesions)", use_container_width=True)
+st.image(composite_panel, caption="Composite Evidence Panel (Clockwise: Original, Grad-CAM Attention, Fused Map, Lesions)", width="stretch")
 
 diagnostic_report = generate_diagnostic_report(
     patient_id, scan_id, iqa_result, grading_result, evidence, heatmap
