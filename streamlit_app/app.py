@@ -52,11 +52,6 @@ model, is_ckpt_loaded = get_grading_model()
 outbox = OutboxQueue()
 sync_worker = SyncWorker(outbox=outbox)
 
-if is_ckpt_loaded:
-    st.sidebar.success("✅ Model Checkpoint: Loaded (`models/dr_grading_efficientnet.pt`)")
-else:
-    st.sidebar.info("ℹ️ Model Checkpoint: Base EfficientNet-B0 (No fine-tuned `.pt` file found in `models/`)")
-
 # ── Sidebar Controls ────────────────────────────────────────────────────────
 st.sidebar.header("📥 Input Image Selection")
 input_mode = st.sidebar.radio("Image Source", ["Synthetic Fundus Generator", "Upload Fundus PDF/Image"])
