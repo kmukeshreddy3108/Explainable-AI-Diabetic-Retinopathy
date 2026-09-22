@@ -1,7 +1,7 @@
 # Explainable AI for Diabetic Retinopathy Screening in Rural India
 
 **SIH 2026 · PS 26038 · MathWorks Track**
-
+**LIVE DEPLOYMENT** https://explainable-ai-diabetic-retinopathy-wbqew9fbnamm2esn4tsh3j.streamlit.app/
 ---
 
 ## Overview
